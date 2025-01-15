@@ -1,62 +1,60 @@
 import streamlit as st
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import LabelEncoder
 
-# Load Iris dataset
-data = load_iris()
-iris_df = pd.DataFrame(data=data.data, columns=data.feature_names)
-iris_df['species'] = pd.Categorical.from_codes(data.target, data.target_names)
+# Load the dataset
+data = pd.read_csv('D:\\TSP4.0-AI-SDP-LAB-Repo-main\\shopping_trends_updated.csv')
+
+# Preprocessing
+data = data[['Category', 'Size', 'Payment Method', 'Location', 'Purchase Amount (USD)']]
+
+# Encode categorical columns
+encoder_category = LabelEncoder()
+data['Category'] = encoder_category.fit_transform(data['Category'])
+
+encoder_size = LabelEncoder()
+data['Size'] = encoder_size.fit_transform(data['Size'])
+
+encoder_payment = LabelEncoder()
+data['Payment Method'] = encoder_payment.fit_transform(data['Payment Method'])
+
+encoder_location = LabelEncoder()
+data['Location'] = encoder_location.fit_transform(data['Location'])
+
+# Split the dataset into features and target
+X = data[['Category', 'Size', 'Payment Method', 'Location']]
+y = data['Purchase Amount (USD)']
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train the model
+model = RandomForestRegressor(random_state=42)
+model.fit(X_train, y_train)
 
 # Streamlit app
-def main():
-    st.title("Iris Dataset Visualization")
-    st.sidebar.title("Visualization Options")
+st.title("Purchase Amount Predictor")
+st.write("Predict the purchase amount based on the selected options.")
 
-    # Sidebar options
-    options = ["Dataset Overview", "Summary Statistics", "Visualizations"]
-    choice = st.sidebar.selectbox("Select an option:", options)
+# User input
+categories = encoder_category.classes_
+sizes = encoder_size.classes_
+payment_methods = encoder_payment.classes_
+locations = encoder_location.classes_
 
-    if choice == "Dataset Overview":
-        st.header("Dataset Overview")
-        st.write(iris_df.head())
-        st.write(f"Shape of dataset: {iris_df.shape}")
+selected_category = st.selectbox("Select a product category:", categories)
+selected_size = st.selectbox("Select a size:", sizes)
+selected_payment_method = st.selectbox("Select a payment method:", payment_methods)
+selected_location = st.selectbox("Select a location:", locations)
 
-    elif choice == "Summary Statistics":
-        st.header("Summary Statistics")
-        st.write(iris_df.describe())
-
-    elif choice == "Visualizations":
-        st.header("Visualizations")
-
-        # Visualization options
-        plot_type = st.sidebar.selectbox(
-            "Select plot type:", ["Scatter Plot", "Histogram", "Pair Plot"]
-        )
-
-        if plot_type == "Scatter Plot":
-            x_axis = st.sidebar.selectbox("Select X-axis:", iris_df.columns[:-1])
-            y_axis = st.sidebar.selectbox("Select Y-axis:", iris_df.columns[:-1])
-
-            st.write(f"Scatter Plot: {x_axis} vs {y_axis}")
-            fig, ax = plt.subplots()
-            sns.scatterplot(data=iris_df, x=x_axis, y=y_axis, hue="species", ax=ax)
-            st.pyplot(fig)
-
-        elif plot_type == "Histogram":
-            column = st.sidebar.selectbox("Select column:", iris_df.columns[:-1])
-
-            st.write(f"Histogram: {column}")
-            fig, ax = plt.subplots()
-            sns.histplot(data=iris_df, x=column, hue="species", kde=True, ax=ax)
-            st.pyplot(fig)
-
-        elif plot_type == "Pair Plot":
-            st.write("Pair Plot")
-            pair_plot_hue = st.sidebar.selectbox("Hue (Species):", [None, "species"])
-            fig = sns.pairplot(iris_df, hue=pair_plot_hue)
-            st.pyplot(fig)
-
-if __name__ == "__main__":
-    main()
+# Prediction
+if st.button("Predict"):
+    category_encoded = encoder_category.transform([selected_category])[0]
+    size_encoded = encoder_size.transform([selected_size])[0]
+    payment_encoded = encoder_payment.transform([selected_payment_method])[0]
+    location_encoded = encoder_location.transform([selected_location])[0]
+    
+    prediction = model.predict([[category_encoded, size_encoded, payment_encoded, location_encoded]])
+    st.write(f"The predicted purchase amount for the selected options is ${prediction[0]:.2f}.")
